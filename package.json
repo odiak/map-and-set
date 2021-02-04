@@ -1,11 +1,12 @@
 {
   "name": "map-and-set",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "main": "index.js",
   "author": "Kaido Iwamoto <h6824.kaido@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc"
   },
   "devDependencies": {
     "@types/jest": "^26.0.20",
