@@ -1,10 +1,8 @@
-type InternalEntry<Key, Value> = {
-  key: Key
-  value: Value
+type DataTableEntry = {
+  key: unknown
+  value: unknown
   hash: number
-  next: InternalEntry<Key, Value> | null
-  before: InternalEntry<Key, Value> | null
-  after: InternalEntry<Key, Value> | null
+  next: number
 }
 
 export type MapKeyOptions<Key> = {
@@ -12,25 +10,26 @@ export type MapKeyOptions<Key> = {
   equal(key1: Key, key2: Key): boolean
 }
 
-const maxCapacity = 2 ** 52
+const absence = Object.freeze({})
+const maxCapacity = 2 ** 30
+const minCapacity = 2 ** 2
 
 export class Map<Key, Value> {
-  private table: Array<InternalEntry<Key, Value> | null>
-  private internalSize = 0
-  private loadFactor = 0.75
-  private threshold: number
   private hashKey: (key: Key) => number
   private equalKey: (key1: Key, key2: Key) => boolean
-  private headEntry: InternalEntry<Key, Value> | null = null
-  private tailEntry: InternalEntry<Key, Value> | null = null
+  private hashTable: Array<number>
+  private dataTable: Array<DataTableEntry | null>
+  private nextSlot = 0
+  private internalSize = 0
+  private deletedCount = 0
 
   constructor(iterable: Iterable<[Key, Value]> | undefined | null, keyOption: MapKeyOptions<Key>) {
     this.hashKey = keyOption.hash
     this.equalKey = keyOption.equal
 
-    const capacity = 16
-    this.threshold = Math.floor(capacity * this.loadFactor)
-    this.table = new Array(capacity).fill(null)
+    const bucketSize = 2
+    this.hashTable = new Array(bucketSize).fill(-1)
+    this.dataTable = new Array(bucketSize * 2).fill(null)
 
     if (iterable != null) {
       for (const [key, value] of iterable) {
@@ -44,63 +43,45 @@ export class Map<Key, Value> {
   }
 
   clear(): void {
-    const table = this.table
-    for (let i = 0; i < table.length; i++) {
-      table[i] = null
-    }
+    this.hashTable = new Array(this.hashTable.length).fill(-1)
+    this.dataTable = new Array(this.dataTable.length).fill(null)
+    this.nextSlot = 0
     this.internalSize = 0
-    this.headEntry = null
-    this.tailEntry = null
+    this.deletedCount = 0
   }
 
-  delete(key: Key): boolean {
+  private getEntry(key: Key): DataTableEntry | null {
     const hash = hashNumber(this.hashKey(key))
-    const i = indexFor(hash, this.table.length)
-    let prev: InternalEntry<Key, Value> | null = null
-    for (let e = this.table[i]; e != null; prev = e, e = e.next) {
-      if (e.hash === hash) {
-        const k = e.key
-        if (k === key || this.equalKey(k, key)) {
-          if (prev == null) {
-            this.table[i] = e.next
-          } else {
-            prev.next = e.next
-          }
-          const { before, after } = e
-          if (before == null) {
-            this.headEntry = after
-          } else {
-            before.after = after
-          }
-          if (after == null) {
-            this.tailEntry = before
-          } else {
-            after.before = before
-          }
-          this.internalSize--
-          return true
-        }
-      }
-    }
-    return false
-  }
-
-  private getEntry(key: Key): InternalEntry<Key, Value> | null {
-    const hash = hashNumber(this.hashKey(key))
-    const i = indexFor(hash, this.table.length)
-    for (let e = this.table[i]; e != null; e = e.next) {
-      if (e.hash === hash) {
-        const k = e.key
-        if (k === key || this.equalKey(k, key)) {
+    const index = indexFor(hash, this.hashTable.length)
+    let i = this.hashTable[index]
+    while (i !== -1) {
+      const e = this.dataTable[i]!
+      if (e.key !== absence && e.hash === hash) {
+        const otherKey = e.key as Key
+        if (otherKey === key || this.equalKey(otherKey, key)) {
           return e
         }
       }
+      i = e.next
     }
     return null
   }
 
+  delete(key: Key): boolean {
+    const e = this.getEntry(key)
+    if (e == null) return false
+    e.key = absence
+    e.value = absence
+    this.deletedCount++
+    this.internalSize--
+    if (this.hashTable.length > 2 && this.internalSize < this.dataTable.length / 2) {
+      this.resize(this.hashTable.length / 2)
+    }
+    return true
+  }
+
   get(key: Key): Value | undefined {
-    return this.getEntry(key)?.value
+    return this.getEntry(key)?.value as Value | undefined
   }
 
   has(key: Key): boolean {
@@ -109,58 +90,63 @@ export class Map<Key, Value> {
 
   set(key: Key, value: Value): this {
     const hash = hashNumber(this.hashKey(key))
-    const i = indexFor(hash, this.table.length)
-    for (let e = this.table[i]; e != null; e = e.next) {
-      if (e.hash === hash) {
-        const k = e.key
-        if (k === key || this.equalKey(k, key)) {
+    const index = indexFor(hash, this.hashTable.length)
+    let i = this.hashTable[index]
+    while (i !== -1) {
+      const e = this.dataTable[i]!
+      if (e.key !== absence && e.hash === hash) {
+        const otherKey = e.key as Key
+        if (otherKey === key || this.equalKey(otherKey, key)) {
           e.value = value
           return this
         }
       }
+      i = e.next
     }
-    const entry: InternalEntry<Key, Value> = {
-      key,
-      value,
-      hash,
-      next: this.table[i],
-      before: this.tailEntry,
-      after: null
+    if (this.nextSlot >= this.dataTable.length) {
+      if (this.internalSize < this.dataTable.length) {
+        this.resize(this.hashTable.length)
+      } else {
+        this.resize(this.hashTable.length * 2)
+      }
     }
-    if (this.tailEntry == null) {
-      this.headEntry = entry
-      this.tailEntry = entry
-    } else {
-      this.tailEntry.after = entry
-      this.tailEntry = entry
-    }
-
-    this.table[i] = entry
+    const e = { key, value, hash, next: this.hashTable[index] }
+    this.hashTable[index] = this.nextSlot
+    this.dataTable[this.nextSlot] = e
+    this.nextSlot++
     this.internalSize++
-    if (this.internalSize >= this.threshold) {
-      this.resize(this.table.length * 2)
-    }
     return this
   }
 
-  private resize(newCapacity: number) {
-    if (this.table.length === maxCapacity) {
-      this.threshold = Number.MAX_SAFE_INTEGER
-      return
+  private resize(bucketSize: number) {
+    const capacity = bucketSize * 2
+    if (capacity > maxCapacity) {
+      throw new Error('maximum capacity exceeded')
     }
-    const newTable = new Array(newCapacity).fill(null)
-    for (let e = this.headEntry; e != null; e = e.after) {
-      const i = indexFor(e.hash, newCapacity)
-      e.next = newTable[i]
-      newTable[i] = e
+
+    const oldDataTable = this.dataTable as Array<DataTableEntry>
+    const hashTable = new Array(bucketSize).fill(-1)
+    const dataTable = new Array(capacity).fill(null)
+    let nextSlot = 0
+    for (const e of oldDataTable) {
+      if (e.key === absence) continue
+      const index = indexFor(e.hash, bucketSize)
+      e.next = hashTable[index]
+      hashTable[index] = nextSlot
+      dataTable[nextSlot] = e
+      nextSlot++
     }
-    this.table = newTable
-    this.threshold = newTable.length * this.loadFactor
+    this.nextSlot = nextSlot
+    this.hashTable = hashTable
+    this.dataTable = dataTable
+    this.deletedCount = 0
   }
 
   *entries(): IterableIterator<[Key, Value]> {
-    for (let e = this.headEntry; e != null; e = e.after) {
-      yield [e.key, e.value]
+    for (let i = 0; i < this.nextSlot; i++) {
+      const e = this.dataTable[i]!
+      if (e.key === absence) continue
+      yield [e.key as Key, e.value as Value]
     }
   }
 
@@ -169,27 +155,39 @@ export class Map<Key, Value> {
   }
 
   *keys(): IterableIterator<Key> {
-    for (let e = this.headEntry; e != null; e = e.after) {
-      yield e.key
+    for (let i = 0; i < this.nextSlot; i++) {
+      const e = this.dataTable[i]!
+      if (e.key === absence) continue
+      yield e.key as Key
     }
   }
 
   *values(): IterableIterator<Value> {
-    for (let e = this.headEntry; e != null; e = e.after) {
-      yield e.value
+    for (let i = 0; i < this.nextSlot; i++) {
+      const e = this.dataTable[i]!
+      if (e.key === absence) continue
+      yield e.value as Value
     }
   }
 
   forEach(callback: (value: Value, key: Key, map: this) => void): void {
-    for (let e = this.headEntry; e != null; e = e.after) {
-      callback(e.value, e.key, this)
+    for (let i = 0; i < this.nextSlot; i++) {
+      const e = this.dataTable[i]!
+      if (e.key === absence) continue
+      callback(e.value as Value, e.key as Key, this)
     }
   }
 }
 
-function hashNumber(h: number): number {
-  h ^= (h >>> 20) ^ (h >>> 12)
-  return h ^ (h >>> 7) ^ (h >>> 4)
+function hashNumber(n: number): number {
+  let hash = n
+  hash = ~hash + (hash << 15)
+  hash = hash ^ (hash >> 12)
+  hash = hash + (hash << 2)
+  hash = hash ^ (hash >> 4)
+  hash = hash * 2057
+  hash = hash ^ (hash >> 16)
+  return hash & 0x3fffffff
 }
 
 function indexFor(hash: number, capacity: number): number {
