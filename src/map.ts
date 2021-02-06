@@ -12,7 +12,6 @@ export type MapKeyOptions<Key> = {
 
 const absence = Object.freeze({})
 const maxCapacity = 2 ** 30
-const minCapacity = 2 ** 2
 
 export class Map<Key, Value> {
   private hashKey: (key: Key) => number
@@ -21,7 +20,6 @@ export class Map<Key, Value> {
   private dataTable: Array<DataTableEntry | null>
   private nextSlot = 0
   private internalSize = 0
-  private deletedCount = 0
 
   constructor(iterable: Iterable<[Key, Value]> | undefined | null, keyOption: MapKeyOptions<Key>) {
     this.hashKey = keyOption.hash
@@ -47,7 +45,6 @@ export class Map<Key, Value> {
     this.dataTable = new Array(this.dataTable.length).fill(null)
     this.nextSlot = 0
     this.internalSize = 0
-    this.deletedCount = 0
   }
 
   private getEntry(key: Key): DataTableEntry | null {
@@ -72,7 +69,6 @@ export class Map<Key, Value> {
     if (e == null) return false
     e.key = absence
     e.value = absence
-    this.deletedCount++
     this.internalSize--
     if (this.hashTable.length > 2 && this.internalSize < this.dataTable.length / 2) {
       this.resize(this.hashTable.length / 2)
@@ -139,7 +135,6 @@ export class Map<Key, Value> {
     this.nextSlot = nextSlot
     this.hashTable = hashTable
     this.dataTable = dataTable
-    this.deletedCount = 0
   }
 
   *entries(): IterableIterator<[Key, Value]> {
