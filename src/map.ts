@@ -49,7 +49,7 @@ export class Map<Key, Value> {
   }
 
   private getEntryContainer(key: Key): EntryContainer<Key, Value> | null {
-    const hash = hashNumber(this.hashKey(key))
+    const hash = this.hashKey(key)
     const index = indexFor(hash, this.hashTable.length)
     for (let c = this.hashTable[index]; c != null; c = c.next) {
       const e = c.entry
@@ -82,7 +82,7 @@ export class Map<Key, Value> {
   }
 
   set(key: Key, value: Value): this {
-    const hash = hashNumber(this.hashKey(key))
+    const hash = this.hashKey(key)
     const index = indexFor(hash, this.hashTable.length)
     for (let c = this.hashTable[index]; c != null; c = c.next) {
       const e = c.entry
@@ -163,17 +163,6 @@ function getInitialBucketSize(numEntries: number): number {
   let n = 2
   while (n < numEntries) n *= 2
   return n
-}
-
-function hashNumber(n: number): number {
-  let hash = n
-  hash = ~hash + (hash << 15)
-  hash = hash ^ (hash >> 12)
-  hash = hash + (hash << 2)
-  hash = hash ^ (hash >> 4)
-  hash = hash * 2057
-  hash = hash ^ (hash >> 16)
-  return hash & 0x3fffffff
 }
 
 function indexFor(hash: number, capacity: number): number {
