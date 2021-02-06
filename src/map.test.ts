@@ -1,5 +1,5 @@
 import { Map } from './map'
-import { makeHashAndEqualFunc } from './util'
+import { makeHashAndEqualFunction } from './util'
 
 test('basics', () => {
   const map = new Map<number, string>(
@@ -25,7 +25,7 @@ test('basics', () => {
 
   const map2 = new Map<number, string>(
     null,
-    makeHashAndEqualFunc((v) => [v])
+    makeHashAndEqualFunction((v) => [v])
   )
   const expected = [] as number[]
   for (let i = 0; i < 100; i++) {
@@ -47,7 +47,7 @@ test('get', () => {
       [[1, 'a'], 99],
       [[2, 'foo'], 100]
     ],
-    makeHashAndEqualFunc((v) => v)
+    makeHashAndEqualFunction((v) => v)
   )
 
   expect(map.get([1, 'a'])).toEqual(99)
@@ -58,7 +58,7 @@ test('get', () => {
 test('set', () => {
   const map = new Map<{ a: number; b: string }, number>(
     null,
-    makeHashAndEqualFunc(({ a, b }) => [a, b])
+    makeHashAndEqualFunction(({ a, b }) => [a, b])
   )
 
   expect(map.get({ a: 1, b: 'x' })).toBe(undefined)
@@ -70,7 +70,7 @@ test('set', () => {
 test('delete', () => {
   const map = new Map<{ a: number; b: string }, number>(
     null,
-    makeHashAndEqualFunc(({ a, b }) => [a, b])
+    makeHashAndEqualFunction(({ a, b }) => [a, b])
   )
 
   map.set({ a: 1, b: 'x' }, 999)
@@ -87,7 +87,7 @@ test('delete', () => {
 test('clear', () => {
   const map = new Map<string[], number>(
     null,
-    makeHashAndEqualFunc((k) => k)
+    makeHashAndEqualFunction((k) => k)
   )
   map.set(['foo', 'bar'], 99)
   map.set(['a', 'b', 'c'], 899)
@@ -105,7 +105,7 @@ test('clear', () => {
 test('size', () => {
   const map = new Map<number, number>(
     null,
-    makeHashAndEqualFunc((v) => [v])
+    makeHashAndEqualFunction((v) => [v])
   )
 
   expect(map.size).toBe(0)
@@ -120,7 +120,7 @@ test('size', () => {
 test('entries', () => {
   const map = new Map<number, number>(
     null,
-    makeHashAndEqualFunc((v) => [v])
+    makeHashAndEqualFunction((v) => [v])
   )
 
   map.set(1, 2)
@@ -144,7 +144,7 @@ test('keys', () => {
       ['b', 2],
       ['hello', 3]
     ],
-    makeHashAndEqualFunc((v) => [v])
+    makeHashAndEqualFunction((v) => [v])
   )
 
   expect([...map.keys()]).toEqual(['a', 'b', 'hello'])
@@ -157,7 +157,7 @@ test('values', () => {
       ['b', 2],
       ['hello', 3]
     ],
-    makeHashAndEqualFunc((v) => [v])
+    makeHashAndEqualFunction((v) => [v])
   )
 
   expect([...map.values()]).toEqual([1, 2, 3])
