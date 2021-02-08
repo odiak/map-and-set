@@ -8,6 +8,14 @@ You can use objects for keys of Map and values of Set without worrying about obj
 Implementations of Map and Set are inspired by an article: [\[V8 Deep Dives\] Understanding Map Internals \| by Andrey Pechkurov \| ITNEXT](https://itnext.io/v8-deep-dives-understanding-map-internals-45eb94a183df).
 Thanks Andrey.
 
+## Install
+
+You can install it with npm.
+
+```console
+npm install map-and-set
+```
+
 ## Example
 
 ```typescript
