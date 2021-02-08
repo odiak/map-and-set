@@ -3,6 +3,8 @@
   "version": "0.0.1",
   "author": "Kaido Iwamoto <h6824.kaido@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/odiak/map-and-set",
+  "repository": "github:odiak/map-and-set",
   "scripts": {
     "test": "jest",
     "build": "tsc"
