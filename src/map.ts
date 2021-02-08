@@ -14,8 +14,6 @@ export type MapKeyOptions<Key> = {
   equal(key1: Key, key2: Key): boolean
 }
 
-const maxCapacity = 2 ** 30
-
 export class Map<Key, Value> {
   private hashKey: (key: Key) => number
   private equalKey: (key1: Key, key2: Key) => boolean
@@ -53,10 +51,8 @@ export class Map<Key, Value> {
     const index = indexFor(hash, this.hashTable.length)
     for (let c = this.hashTable[index]; c != null; c = c.next) {
       const e = c.entry
-      if (e != null && e.hash === hash) {
-        if (e.key === key || this.equalKey(e.key, key)) {
-          return c
-        }
+      if (e != null && e.hash === hash && (e.key === key || this.equalKey(e.key, key))) {
+        return c
       }
     }
     return null
@@ -67,7 +63,7 @@ export class Map<Key, Value> {
     if (c == null) return false
     c.entry = null
     this.internalSize--
-    if (this.hashTable.length > 2 && this.internalSize < this.dataTable.length / 2) {
+    if (this.hashTable.length > 2 && this.internalSize < this.hashTable.length) {
       this.resize(this.hashTable.length / 2)
     }
     return true
@@ -86,11 +82,9 @@ export class Map<Key, Value> {
     const index = indexFor(hash, this.hashTable.length)
     for (let c = this.hashTable[index]; c != null; c = c.next) {
       const e = c.entry
-      if (e != null && e.hash === hash) {
-        if (e.key === key || this.equalKey(e.key, key)) {
-          e.value = value
-          return this
-        }
+      if (e != null && e.hash === hash && (e.key === key || this.equalKey(e.key, key))) {
+        e.value = value
+        return this
       }
     }
     const c = { entry: { key, value, hash }, next: this.hashTable[index] }
@@ -109,11 +103,6 @@ export class Map<Key, Value> {
   }
 
   private resize(bucketSize: number) {
-    const capacity = bucketSize * 2
-    if (capacity > maxCapacity) {
-      throw new Error('maximum capacity exceeded')
-    }
-
     const oldDataTable = this.dataTable
     type EC = EntryContainer<Key, Value>
     const hashTable = new Array<EC | null>(bucketSize).fill(null)
