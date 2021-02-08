@@ -1,5 +1,3 @@
-import { Map } from './map'
-
 type Entry<Value> = {
   value: Value
   hash: number
@@ -81,6 +79,7 @@ export class Set<Value> {
     const c = { entry: { value, hash }, next: this.hashTable[index] }
     this.hashTable[index] = c
     this.dataTable.push(c)
+    this.internalSize++
 
     if (this.dataTable.length > this.hashTable.length * 2) {
       if (this.internalSize < this.hashTable.length) {
