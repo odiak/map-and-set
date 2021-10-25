@@ -1,6 +1,6 @@
 {
   "name": "map-and-set",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "author": "Kaido Iwamoto <h6824.kaido@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/odiak/map-and-set",
@@ -12,7 +12,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "./dist"
+    "dist"
   ],
   "devDependencies": {
     "@types/jest": "^26.0.20",
